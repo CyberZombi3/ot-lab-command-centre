@@ -1,0 +1,768 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OT Lab Command Centre</title>
+<style>
+:root{
+  --bg:#0b0f14; --panel:#121922; --panel2:#18212c; --line:#243241; --text:#d7e1ea; --dim:#7f93a6;
+  --green:#3ddc84; --amber:#ffb020; --red:#ff4d5e; --cyan:#3fc5f0; --violet:#a78bfa;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.015) 0 1px,transparent 1px 3px)}
+header{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;
+  padding:16px 24px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#101721,#0b0f14)}
+h1{margin:0;font:600 18px var(--mono);letter-spacing:.12em;text-transform:uppercase}
+h1 span{color:var(--cyan)}
+h2{font:600 12px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:0 0 12px}
+main{margin:0 auto;padding:20px 24px 60px;display:grid;gap:20px;grid-template-columns:1fr}
+@media(min-width:1000px){main{grid-template-columns:1.25fr 1fr}}
+@media(max-width:600px){main{padding:16px}}
+section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+.span2{grid-column:1/-1}
+button{font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--text);
+  background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:7px 11px;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--cyan);color:var(--cyan)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.go{border-color:#1f6b45;color:var(--green)}
+button.danger{border-color:#6b1f28;color:var(--red)}
+button.armed{background:var(--red);color:#000}
+a.btn{font:600 12px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:#000;background:var(--cyan);
+  border-radius:6px;padding:7px 11px;text-decoration:none}
+a.btn[aria-disabled=true]{background:var(--line);color:var(--dim);pointer-events:none}
+
+/* rank + power */
+.rank{display:flex;align-items:center;gap:14px}
+.badge{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font:700 18px var(--mono);
+  background:radial-gradient(circle at 30% 30%,#2b3d52,#121922);border:2px solid var(--cyan);color:var(--cyan)}
+.rank b{display:block;font:600 14px var(--mono)}
+.xpbar{width:220px;height:8px;background:var(--panel2);border-radius:4px;overflow:hidden;margin-top:4px}
+.xpbar i{display:block;height:100%;background:linear-gradient(90deg,var(--cyan),var(--violet));transition:width .6s}
+.small{font-size:12px;color:var(--dim)}
+.power{display:flex;gap:8px;align-items:center}
+
+/* lamps */
+.lamp{width:11px;height:11px;border-radius:50%;flex:none;background:#3a4654}
+.lamp.ok{background:var(--green);box-shadow:0 0 8px var(--green)}
+.lamp.warn{background:var(--amber);box-shadow:0 0 8px var(--amber);animation:blink 1s infinite}
+.lamp.bad{background:var(--red);box-shadow:0 0 8px var(--red)}
+@keyframes blink{50%{opacity:.35}}
+
+/* systems */
+.grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.sys{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.sys .top{display:flex;gap:8px;align-items:center}
+.sys .name{font:600 13px var(--mono);flex:1}
+.sys .meta{font:12px var(--mono);color:var(--dim)}
+.sys .role{font-size:12px;color:var(--dim)}
+.cred{font:12px var(--mono);color:var(--amber);cursor:pointer;border-bottom:1px dashed #6b5320;width:fit-content}
+.sys .acts{display:flex;gap:6px;margin-top:auto;flex-wrap:wrap}
+.zone{font:600 10px var(--mono);padding:2px 6px;border-radius:4px;letter-spacing:.08em}
+.zone.ics{background:#2a1a1d;color:#ff8a95}.zone.dmz{background:#2a2414;color:var(--amber)}
+.zone.sens{background:#14262a;color:var(--cyan)}.zone.ops{background:#1d1a2e;color:var(--violet)}
+
+/* console */
+pre#console{margin:0;height:170px;overflow:auto;background:#06090d;border:1px solid var(--line);border-radius:6px;
+  padding:10px;font:12px/1.4 var(--mono);color:#9fe8b9;white-space:pre-wrap}
+.jobline{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font:12px var(--mono)}
+
+/* missions */
+.mission{border:1px solid var(--line);border-radius:8px;margin-bottom:10px;background:var(--panel2);overflow:hidden}
+.mission summary{list-style:none;cursor:pointer;padding:12px;display:flex;gap:10px;align-items:center}
+.mission summary::-webkit-details-marker{display:none}
+.mnum{font:700 12px var(--mono);color:var(--cyan);width:34px}
+.mtitle{flex:1;font-weight:600}
+.mxp{font:12px var(--mono);color:var(--dim)}
+.mission.done{border-color:#1f6b45}.mission.done .mnum{color:var(--green)}
+.mission.locked{opacity:.55}
+.mbody{padding:0 12px 12px 56px}
+.mbody p{margin:0 0 10px;color:var(--dim)}
+.obj{display:flex;gap:8px;align-items:flex-start;margin:6px 0;cursor:pointer}
+.obj input{accent-color:var(--green);margin-top:3px}
+.flag{display:flex;gap:6px;align-items:center;margin:8px 0;flex-wrap:wrap}
+.flag label{flex-basis:100%;font-size:13px}
+.flag input{flex:1;min-width:140px;background:#06090d;border:1px solid var(--line);color:var(--text);border-radius:6px;
+  padding:7px 9px;font:13px var(--mono)}
+.flag.solved input{border-color:#1f6b45;color:var(--green)}
+.flag .res{font:12px var(--mono)}
+.medals{display:flex;gap:6px;flex-wrap:wrap}
+.medal{font:600 11px var(--mono);padding:4px 8px;border-radius:999px;border:1px solid var(--line);color:var(--dim)}
+.medal.on{border-color:var(--green);color:var(--green);background:#0f2219}
+
+/* alerts */
+.alerts{max-height:320px;overflow:auto;font:12px var(--mono)}
+.alert{display:grid;grid-template-columns:34px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
+.lvl{text-align:center;border-radius:4px;padding:1px 0;font-weight:700}
+.lvl.h{background:var(--red);color:#000}.lvl.m{background:var(--amber);color:#000}.lvl.l{background:var(--line)}
+.spoiler{display:grid;place-items:center;gap:10px;padding:30px;text-align:center;color:var(--dim)}
+
+/* plant */
+.plant{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.tile{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px}
+.tile .lbl{font:600 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.tile .big{font:700 24px var(--mono);margin:4px 0}
+.tile.alarm{border-color:var(--red);background:#2a1216}
+.tile.alarm .big{color:var(--red)}
+.bar{height:8px;background:#06090d;border-radius:4px;position:relative;overflow:hidden;margin-top:6px}
+.bar i{position:absolute;inset:0 auto 0 0;background:var(--cyan)}
+.bar b{position:absolute;top:0;bottom:0;width:2px;background:var(--amber)}
+.vrow{display:grid;grid-template-columns:62px 1fr 38px;gap:8px;align-items:center;font:12px var(--mono);margin:5px 0}
+.vrow .bar{margin:0}
+.fix{margin-top:8px}
+
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--panel2);
+  border:1px solid var(--green);color:var(--green);font:600 13px var(--mono);padding:10px 16px;border-radius:8px;
+  transition:transform .3s;z-index:9}
+#toast.show{transform:translateX(-50%) translateY(0)}
+.offline{color:var(--red);font:600 12px var(--mono)}
+
+/* workspace */
+.wsbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.wsbar h2{margin:0;flex:1}
+.wsbar button.on{border-color:var(--cyan);color:var(--cyan)}
+#mini{font:12px var(--mono);color:var(--dim)}
+#mini .bad{color:var(--red);font-weight:700}
+/* dock: every system, left to right */
+.dock{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px}
+.tile2{flex:1 0 150px;max-width:230px;position:relative;text-align:left;text-transform:none;letter-spacing:0;
+  display:flex;flex-direction:column;gap:3px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}
+.tile2 .tt{display:flex;gap:7px;align-items:center;font:600 13px var(--mono)}
+.tile2 .ic{font-size:16px}
+.tile2 .sub{font:11px var(--mono);color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile2 .sub.bad{color:var(--red)}
+.tile2 .tag{position:absolute;top:-7px;right:8px;font:700 10px var(--mono);padding:1px 6px;border-radius:4px;background:var(--cyan);color:#000}
+.tile2.shown{border-color:var(--cyan);background:#13283a}
+.tile2.shown.act{box-shadow:0 0 0 1px var(--cyan),0 0 14px rgba(63,197,240,.25)}
+.tile2.live:not(.shown) .tt::after{content:"●";font-size:8px;color:var(--green);margin-left:auto}
+.tile2:disabled{opacity:.45}
+.tile2 .lr{display:none;gap:4px;margin-top:4px}
+.tile2:hover .lr{display:flex}
+.tile2 .lr span{font:600 10px var(--mono);padding:2px 6px;border:1px solid var(--line);border-radius:4px;color:var(--dim)}
+.tile2 .lr span:hover{border-color:var(--cyan);color:var(--cyan)}
+/* stage: pane frames, with the live iframes laid over them */
+.stage{position:relative;height:74vh;min-height:440px}
+.panes{display:grid;gap:10px;height:100%;grid-template-columns:1fr}
+.panes.split{grid-template-columns:1fr 1fr}
+@media(max-width:999px){.panes.split{grid-template-columns:1fr;grid-template-rows:1fr 1fr}}
+.pane{border:1px solid var(--line);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;background:#06090d;min-height:0}
+.pane.active{border-color:var(--cyan)}
+.pbar{display:flex;gap:6px;align-items:center;padding:6px 8px;background:var(--panel2);border-bottom:1px solid var(--line)}
+.pbar .pname{font:600 12px var(--mono)}
+.pbar .sp{flex:1}
+.pbar button{padding:4px 8px}
+.slot{flex:1;min-height:0;display:grid;place-items:center;color:var(--dim);font:13px var(--mono)}
+.slot.native{display:block;overflow:auto;padding:14px;font:inherit;color:var(--text);background:var(--panel)}
+.slot.native .mbody{padding-left:12px}
+.layer{position:absolute;inset:0;pointer-events:none}
+.layer iframe{position:absolute;border:0;background:#fff;pointer-events:auto;display:none}
+.layer iframe.guide{background:var(--bg)}
+.layer iframe.dark{background:#1e1e1e}
+#workspace.big{position:fixed;inset:0;z-index:8;border-radius:0;display:flex;flex-direction:column;padding:10px;overflow:hidden}
+#workspace.big .stage{flex:1;height:auto;min-height:0}
+body.big{overflow:hidden}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>OT Lab <span>//</span> Command Centre</h1>
+    <div class="small">GRFICS chemical plant · OT training range</div>
+  </div>
+  <div class="rank">
+    <div class="badge" id="rankIcon">1</div>
+    <div>
+      <b id="rankName">Trainee</b>
+      <div class="xpbar"><i id="xpFill" style="width:0"></i></div>
+      <div class="small" id="xpText">0 XP</div>
+    </div>
+  </div>
+  <div class="power">
+    <button class="go" data-show="guide">📘 Guide</button>
+    <span class="lamp" id="vmLamp"></span><span class="small" id="vmText">checking…</span>
+    <button class="go" id="btnUp">Power up</button>
+    <button id="btnDown">Power down</button>
+  </div>
+</header>
+
+<main>
+  <section class="span2">
+    <h2>Plant status</h2>
+    <div id="plant"><p class="small">Waiting for the plant…</p></div>
+  </section>
+
+  <section class="span2" id="workspace">
+    <div class="wsbar">
+      <h2>Workspace</h2>
+      <span id="mini"></span>
+      <button id="wsSingle" title="One system, full width">▣ Single</button>
+      <button id="wsSplit" title="Two systems side by side">◫ Split</button>
+      <button id="wsBig" title="Fill the screen (Esc to exit)">⤢ Expand</button>
+    </div>
+    <div class="dock" id="dock"></div>
+    <div class="stage" id="stage">
+      <div class="panes" id="panes"></div>
+      <div class="layer" id="layer"></div>
+    </div>
+  </section>
+
+  <section class="span2">
+    <h2>Systems</h2>
+    <div class="grid" id="systems"></div>
+  </section>
+
+  <section>
+    <h2>Missions</h2>
+    <div id="missionsHome">
+      <p class="small" id="missionsAway" hidden>Missions are open in the workspace above.
+        <button data-tile-home>Bring them back here</button></p>
+      <div id="missionsBox">
+        <div id="missions"></div>
+        <h2 style="margin-top:16px">Medals</h2>
+        <div class="medals" id="medals"></div>
+        <div style="margin-top:16px"><button class="danger" id="btnResetMissions">Reset missions</button>
+          <span class="small">Clears ticks, flags and XP so you can start the course again. The lab itself isn't touched.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <div style="display:grid;gap:20px;align-content:start">
+    <section>
+      <h2>Operations console</h2>
+      <div class="jobline"><span id="jobName">Idle</span><span id="jobState"></span></div>
+      <pre id="console">Ready.</pre>
+    </section>
+
+    <section>
+      <h2>SOC feed · Zeek &amp; IDS alerts</h2>
+      <div id="alerts"></div>
+    </section>
+
+    <section>
+      <h2>Danger zone</h2>
+      <p class="small" style="margin-top:0">Wipes PLC programs, HMI config and firewall rules back to factory defaults,
+        then starts the lab again. Your mission progress is kept.</p>
+      <button class="danger" id="btnReset">Reset entire lab</button>
+    </section>
+  </div>
+</main>
+<div id="toast"></div>
+
+<script>
+const SYSTEMS = [
+  {svc:"simulation", name:"Plant (3D)", zone:"ics", ip:"192.168.95.45", url:"http://localhost/", role:"Physical process: reactor, valves, tank, analyser"},
+  {svc:"plc", name:"PLC · OpenPLC", zone:"ics", ip:"192.168.95.2", url:"http://localhost:8080/", cred:"openplc / openplc", role:"Controls the process, polls every device"},
+  {svc:"ews", name:"Engineering WS", zone:"ics", ip:"192.168.95.5", url:"http://localhost:6080/", role:"Where engineers edit PLC logic"},
+  {svc:"hmi", name:"HMI · Scada-LTS", zone:"dmz", ip:"192.168.90.107", url:"http://localhost:6081/", view:"http://localhost:4981/", cred:"admin / admin", role:"Operator screen. Manual setpoints only apply in MANUAL MODE"},
+  {svc:"router", name:"Router / Firewall", zone:"dmz", ip:".90.200 / .95.200", url:null, cred:"admin / password",
+   role:"Zone boundary + Suricata. Open from Kali's browser: http://192.168.90.200:5000"},
+  {svc:"kali", name:"Kali · Attacker", zone:"ops", ip:"192.168.90.6", url:"http://localhost:6088/", cred:"kali / kali", role:"Your attack box in the DMZ"},
+  {svc:"caldera", name:"Caldera", zone:"ops", ip:"192.168.90.250", url:"http://localhost:8888/", cred:"red / fortiphyd-red", role:"MITRE adversary emulation (OT plugin)"},
+  {svc:"wazuh", name:"Wazuh SIEM", zone:"sens", ip:"192.168.90.20", url:"http://localhost:5601/", view:"http://localhost:4951/", cred:"admin / admin", role:"Alerts and logs. Slow to start (few mins)"},
+  {svc:"zeek", name:"Zeek sensor", zone:"sens", ip:"mirror0", url:null, role:"Passive network sensor (like a SPAN port)", sensor:true},
+];
+
+// Answers are stored as SHA-256 hashes so they're not readable in the source.
+const MISSIONS = [
+  {t:"Walk the plant", d:"Get to know the site: the physical plant, the operator's screen and the PLC.",
+   obj:["Find the 9 physical vulnerabilities in the 3D walkthrough","Open the HMI and find the mode indicator and the pressure reading",
+        "Log in to the PLC web page and open Slave Devices","Fill in the zone table in the guide"],
+   flags:[{q:"How many field devices (valves, tank, analyser) does the PLC poll?", h:["e7f6c011776e8db7cd330b54174fd76f7d0216b612387a5ffcfb81e6f0919683"]},
+          {q:"Is the PLC normally in auto or manual mode?", h:["929260ad9b9ea9fe0f3553dd964f4ff3deb5792efd031a2b90f573fe91f012bb"]}]},
+  {t:"Passive discovery", d:"Listen before you touch. Zeek is your passive sensor; you read its logs from your host terminal.",
+   obj:["Look at raw Modbus log lines from Zeek (host terminal)","Run zeek-talkers.sh and read the table","Write an asset inventory (IP, role, talks to)"],
+   flags:[{q:"Which IP polls all the field devices?", h:["9b7692c8c137f7d58f39f62051db21a1839382ffdb78fe1867c0a589fbec53c7"]},
+          {q:"Which DMZ host legitimately reads from the PLC?", h:["eb46d92e847e0c178a5c1e8cbf29e48b50fd64015a6bbdf420ee60299f980bc4"]},
+          {q:"Which Modbus unit ID do the field devices use? (see the guide)", h:["396f804443825586c1283a27fdcadf74abb82008bcd9b260a30912a26563f27d"]}]},
+  {t:"Careful active scanning", d:"Slow, targeted, and only with sign-off. Then find yourself in the logs.",
+   obj:["Run the slow connect scan from Kali","Run modbus-discover against the analyser","Find your scan in zeek-talkers.sh / conn.log"],
+   flags:[{q:"What software does the analyser identify itself as? (one word)", h:["7a828bce59683aa57676184d821105edb759088ee7094d12797d69bda36758ab"]}]},
+  {t:"Read the analyser", d:"No authentication on Modbus. If you can reach port 502, you can read it.",
+   obj:["Run read_analyser.py in Kali","Run plc_status.py in Kali","Compare the numbers with the HMI and the 3D view"],
+   flags:[{q:"How many input registers does the analyser expose?", h:["4e07408562bedb8b60ce05c1decfe3ad16b72230967de01f640b7e4729b49fce"]},
+          {q:"What's the PLC's pressure setpoint in kPa?", h:["47640e5f52b61369ed665d52e51fcd0d0577385d0d531b8eb91018ecb947df5d"]}]},
+  {t:"Change the process", d:"Setpoint tampering and taking manual control: the highest impact OT findings.",
+   obj:["Write a valve directly and watch the PLC overwrite it","Switch the PLC to manual mode from Kali and drive pressure up",
+        "See MANUAL MODE: ON appear on the HMI","Put the PLC back in auto"],
+   flags:[{q:"The PLC polls its devices every how many milliseconds?", h:["ad57366865126e55649ecb23ae1d48887544976efea46a48eb5d85a6eeb4d306"]},
+          {q:"Which coil number switches the PLC to manual mode?", h:["5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"]},
+          {q:"Default password on the PLC web interface?", h:["5d3a453a2ea6638184c9f995dc54180f5dd995e71293883d27be49090a2d595f"]}]},
+  {t:"Detect it", d:"Switch sides. What did the sensors see of your attacks? Then hunt.",
+   obj:["Find your Mission 5 writes in zeek-talkers.sh","Find them in the SOC feed / Wazuh","Write two detection rules in plain English"],
+   flags:[{q:"Hunt: IP of the host that's already compromised?", h:["eb46d92e847e0c178a5c1e8cbf29e48b50fd64015a6bbdf420ee60299f980bc4"]},
+          {q:"Hunt: which port is it calling home on?", h:["79f06f8fde333461739f220090a23cb2a79f6d714bee100d0e4b4af249294619"]}], soc:true},
+  {t:"Defend it", d:"Fix the firewall without stopping the plant. Availability first.",
+   obj:["Log in to the firewall from Kali's Firefox and find the dangerous rule","Add the HMI to PLC allow rule, delete the allow-all, Apply",
+        "Confirm read_analyser.py now fails","Confirm the plant runs and the HMI still updates"],
+   flags:[{q:"Which TCP port does the HMI need to reach on the PLC?", h:["5344c4110f483793dc352c388e67776724c36b4bea3ffda6cab7c75b9c65aceb"]}]},
+  {t:"Write it up (FAT report)", d:"The deliverable a panel supplier's customers want: a FAT security section in IEC 62443-3-3 language.",
+   obj:["Map each finding to a 62443-3-3 SR","Add a recommendation for every fail","Produce a one-page report you could hand a customer"], flags:[]},
+];
+const RANKS = [[0,"Trainee"],[150,"Field Technician"],[350,"Control Room Operator"],[600,"OT Analyst"],[900,"ICS Threat Hunter"],[1250,"Plant Defender"]];
+const XP_OBJ = 20, XP_FLAG = 50, XP_MISSION = 50;
+
+let progress = {obj:{}, flags:{}, unlocked:{}, socRevealed:false};
+let status = {vm:false, containers:{}, mirror:false, job:{}};
+let lastJobFinished = 0;
+
+const $ = s => document.querySelector(s);
+const api = (path, body) => fetch(path, body === undefined ? {} :
+  {method:"POST", headers:{"Content-Type":"application/json","X-Lab":"1"}, body:JSON.stringify(body)}).then(r => r.json());
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("show"),2600); }
+async function sha(s){ const b=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- XP & ranks ---------- */
+function missionDone(i){
+  const m = MISSIONS[i];
+  return m.obj.every((_,j)=>progress.obj[`${i}.${j}`]) && m.flags.every((_,j)=>progress.flags[`${i}.${j}`]);
+}
+function unlocked(i){ return i===0 || missionDone(i-1) || progress.unlocked[i]; }
+function totalXP(){
+  let xp = Object.values(progress.obj).filter(Boolean).length*XP_OBJ + Object.values(progress.flags).filter(Boolean).length*XP_FLAG;
+  MISSIONS.forEach((_,i)=>{ if(missionDone(i)) xp += XP_MISSION; });
+  return xp;
+}
+function renderRank(){
+  const xp = totalXP();
+  let idx = 0; RANKS.forEach((r,i)=>{ if(xp>=r[0]) idx=i; });
+  const next = RANKS[idx+1];
+  $("#rankIcon").textContent = idx+1;
+  $("#rankName").textContent = RANKS[idx][1];
+  $("#xpText").textContent = next ? `${xp} XP · ${next[0]-xp} to ${next[1]}` : `${xp} XP · max rank`;
+  $("#xpFill").style.width = next ? `${100*(xp-RANKS[idx][0])/(next[0]-RANKS[idx][0])}%` : "100%";
+  return idx;
+}
+let shownRank = null;
+function save(){
+  const before = shownRank;
+  api("/api/progress", progress);
+  renderMissions(); const r = renderRank(); renderMedals(); if(typeof renderDock==="function") renderDock();
+  if(before!==null && r>before) toast(`Promoted: ${RANKS[r][1]}`);
+  shownRank = r;
+}
+
+/* ---------- missions ---------- */
+function renderMissions(){
+  const open = [...document.querySelectorAll(".mission[open]")].map(d=>d.dataset.i);
+  $("#missions").innerHTML = MISSIONS.map((m,i)=>{
+    const done = missionDone(i), un = unlocked(i);
+    const got = m.obj.filter((_,j)=>progress.obj[`${i}.${j}`]).length + m.flags.filter((_,j)=>progress.flags[`${i}.${j}`]).length;
+    const tot = m.obj.length + m.flags.length;
+    const body = !un
+      ? `<p>Locked. Complete mission ${i} to unlock, or <button data-unlock="${i}">unlock early</button></p>`
+      : `<p>${esc(m.d)} <a href="/guide#mission-${i+1}" data-guide="mission-${i+1}" style="color:var(--cyan)">Show Mission ${i+1} in the workspace</a></p>` +
+        m.obj.map((o,j)=>`<label class="obj"><input type="checkbox" data-obj="${i}.${j}" ${progress.obj[`${i}.${j}`]?"checked":""}><span>${esc(o)} <span class="small">+${XP_OBJ}</span></span></label>`).join("") +
+        m.flags.map((f,j)=>{ const k=`${i}.${j}`, s=progress.flags[k];
+          return `<div class="flag ${s?"solved":""}"><label>⚑ ${esc(f.q)} <span class="small">+${XP_FLAG}</span></label>
+            <input data-flagin="${k}" placeholder="${s?"captured":"answer"}" ${s?"disabled value='✓ captured'":""}>
+            ${s?"":`<button data-flag="${k}">Submit</button>`}<span class="res" id="res-${k.replace(".","-")}"></span></div>`; }).join("");
+    return `<details class="mission ${done?"done":""} ${un?"":"locked"}" data-i="${i}" ${open.includes(String(i))?"open":""}>
+      <summary><span class="mnum">${done?"✓":"M"+(i+1)}</span><span class="mtitle">${esc(m.t)}</span><span class="mxp">${got}/${tot}</span></summary>
+      <div class="mbody">${body}</div></details>`;
+  }).join("");
+}
+$("#missions").addEventListener("change", e=>{
+  const k = e.target.dataset.obj; if(!k) return;
+  progress.obj[k] = e.target.checked;
+  const i = +k.split(".")[0];
+  save(); if(missionDone(i)) toast(`Mission complete: ${MISSIONS[i].t} +${XP_MISSION} XP`);
+});
+$("#missions").addEventListener("click", async e=>{
+  if(e.target.dataset.unlock){ progress.unlocked[e.target.dataset.unlock]=true; save(); return; }
+  const k = e.target.dataset.flag; if(!k) return;
+  await submitFlag(k);
+});
+$("#missions").addEventListener("keydown", async e=>{ if(e.key==="Enter" && e.target.dataset.flagin) await submitFlag(e.target.dataset.flagin); });
+async function submitFlag(k){
+  const [i,j] = k.split(".").map(Number), f = MISSIONS[i].flags[j];
+  const raw = document.querySelector(`[data-flagin="${k}"]`).value.trim().toLowerCase();
+  const cands = [raw.replace(/\s+/g,""), raw.split(/\s+/)[0], raw.replace(/ms$/,"")];
+  const hashes = await Promise.all(cands.map(sha));
+  const res = document.getElementById(`res-${k.replace(".","-")}`);
+  if(hashes.some(h=>f.h.includes(h))){
+    progress.flags[k]=true; save(); toast(`Flag captured +${XP_FLAG} XP`);
+    if(missionDone(i)) setTimeout(()=>toast(`Mission complete: ${MISSIONS[i].t} +${XP_MISSION} XP`),1400);
+  } else { res.textContent="✗ not quite"; res.style.color="var(--red)"; }
+}
+
+/* ---------- medals ---------- */
+function renderMedals(){
+  const flags = Object.values(progress.flags).filter(Boolean).length;
+  const list = [
+    ["First Contact", progress.obj["0.0"]],
+    ["Silent Listener", missionDone(1)],
+    ["Register Reader", missionDone(3)],
+    ["Hands on the Valve", missionDone(4)],
+    ["Threat Hunter", progress.flags["5.0"] && progress.flags["5.1"]],
+    ["Availability First", missionDone(6)],
+    ["Report Writer", missionDone(7)],
+    ["Flag Collector", flags >= 10],
+    ["Full Plant", MISSIONS.every((_,i)=>missionDone(i))],
+  ];
+  $("#medals").innerHTML = list.map(([n,on])=>`<span class="medal ${on?"on":""}">${on?"★":"☆"} ${n}</span>`).join("");
+}
+
+/* ---------- systems ---------- */
+function lampClass(c){
+  if(!c) return "";
+  if(c.state!=="running") return "bad";
+  if(c.health==="starting") return "warn";
+  if(c.health==="unhealthy") return "bad";
+  return "ok";
+}
+function renderSystems(){
+  const busy = status.job && status.job.running;
+  $("#systems").innerHTML = SYSTEMS.map(s=>{
+    const c = status.containers[s.svc];
+    let lc = status.vm ? lampClass(c) : "";
+    let st = !status.vm ? "offline" : !c ? "not created" : (c.health || c.state);
+    if(s.sensor && c && c.state==="running"){ lc = status.mirror ? "ok" : "warn"; st = status.mirror ? "mirror armed" : "mirror off"; }
+    const zone = {ics:"ICS NET",dmz:"DMZ",ops:"RED TEAM",sens:"SENSOR"}[s.zone];
+    return `<div class="sys">
+      <div class="top"><span class="lamp ${lc}"></span><span class="name">${esc(s.name)}</span><span class="zone ${s.zone}">${zone}</span></div>
+      <div class="meta">${esc(s.ip)} · ${esc(st)}</div>
+      <div class="role">${esc(s.role)}</div>
+      ${s.cred?`<span class="cred" title="Click to copy password" data-copy="${esc(s.cred.split(" / ")[1])}">🔑 ${esc(s.cred)}</span>`:""}
+      <div class="acts">
+        ${s.url?`<button class="go" data-show="${s.svc}" ${lc!=="ok"&&lc!=="warn"?"disabled":""}>View</button>
+          <a class="btn" href="${s.url}" target="_blank" rel="noopener" title="Open in a new tab" aria-disabled="${lc!=="ok"&&lc!=="warn"}">↗</a>`:""}
+        <button data-restart="${s.svc}" ${busy||!status.vm?"disabled":""}>Restart</button>
+        ${s.sensor?`<button data-mirror ${busy||!status.vm?"disabled":""}>Re-arm mirror</button>`:""}
+      </div></div>`;
+  }).join("");
+  $("#btnUp").disabled = busy;
+  $("#btnDown").disabled = busy || !status.vm;
+  $("#btnReset").disabled = busy || !status.vm;
+  $("#vmLamp").className = "lamp " + (status.vm ? "ok" : "bad");
+  $("#vmText").textContent = status.vm ? "Lab online" : "Lab offline";
+}
+$("#systems").addEventListener("click", e=>{
+  const t = e.target.closest("[data-copy],[data-restart],[data-mirror]"); if(!t || t.dataset.show) return;
+  if(t.dataset.copy){ navigator.clipboard.writeText(t.dataset.copy); toast("Password copied"); }
+  else if(t.dataset.restart) action("restart", t.dataset.restart);
+  else action("mirror");
+});
+async function action(a, service){
+  const r = await api("/api/action", {action:a, service});
+  if(r.error) toast(r.error); else { $("#console").textContent = ""; poll(); }
+}
+$("#btnUp").onclick = ()=>action("up");
+$("#btnDown").onclick = ()=>action("down");
+let armed = false;
+$("#btnReset").onclick = ()=>{
+  const b = $("#btnReset");
+  if(!armed){ armed=true; b.classList.add("armed"); b.textContent="Click again to confirm reset";
+    setTimeout(()=>{ armed=false; b.classList.remove("armed"); b.textContent="Reset entire lab"; },4000); return; }
+  armed=false; b.classList.remove("armed"); b.textContent="Reset entire lab"; action("reset");
+};
+
+/* ---------- plant ---------- */
+async function renderPlant(){
+  const box = $("#plant");
+  if(!status.vm){ box.innerHTML = `<p class="offline">Lab offline. Press Power up.</p>`; return; }
+  const p = await api("/api/plant").catch(()=>({ok:false}));
+  const busy = status.job && status.job.running;
+  if(!p.ok){ box.innerHTML = `<p class="small">Plant simulator not answering yet…</p>`; return; }
+  const pct = (v,max)=>Math.max(0,Math.min(100,100*v/max));
+  const valve = (n,v)=>`<div class="vrow"><span>${n}</span><div class="bar"><i style="width:${v}%"></i></div><span>${v}%</span></div>`;
+  lastPlant = p; renderDock();
+  const pAlarm = p.pressure >= 3000;
+  $("#mini").innerHTML = `Pressure <span class="${pAlarm?"bad":""}">${p.pressure} kPa</span> · PLC ${p.plc_running?"running":'<span class="bad">STOPPED</span>'}`+
+    (p.e_stop?' · <span class="bad">E-STOP TRIPPED</span>':"");
+  box.innerHTML = `<div class="plant">
+    <div class="tile ${p.e_stop?"alarm":""}">
+      <div class="lbl">Emergency stop</div>
+      <div class="big">${p.e_stop?"TRIPPED":"Clear"}</div>
+      <div class="small">${p.e_stop?"All valves forced safe. The PLC and HMI can't move anything until it's released.":"Valves follow the PLC."}</div>
+      ${p.e_stop?`<button class="go fix" data-act="estop-release" ${busy?"disabled":""}>Release E-stop</button>`:""}
+    </div>
+    <div class="tile ${p.plc_running?"":"alarm"}">
+      <div class="lbl">PLC control program</div>
+      <div class="big">${p.plc_running?"Running":"STOPPED"}</div>
+      <div class="small">${p.plc_running?"Polling all 6 field devices every 100ms.":"Nothing is controlling the valves. Restart the PLC (or press Start PLC on its web page)."}</div>
+      ${p.plc_running?"":`<button class="go fix" data-act="restart" data-svc="plc" ${busy?"disabled":""}>Restart PLC</button>`}
+    </div>
+    <div class="tile ${pAlarm?"alarm":""}">
+      <div class="lbl">Reactor pressure</div>
+      <div class="big">${p.pressure} kPa</div>
+      <div class="bar"><i style="width:${pct(p.pressure,3200)}%;background:${pAlarm?"var(--red)":"var(--cyan)"}"></i><b style="left:${pct(2700,3200)}%"></b></div>
+      <div class="small">Setpoint 2700 kPa (amber line). Climbs slowly after a restart, then the purge valve opens.</div>
+    </div>
+    <div class="tile">
+      <div class="lbl">Valves</div>
+      ${valve("Feed 1",p.valves.f1)}${valve("Feed 2",p.valves.f2)}${valve("Purge",p.valves.purge)}${valve("Product",p.valves.product)}
+    </div>
+    <div class="tile">
+      <div class="lbl">Analyser (purge gas)</div>
+      <div class="big" style="font-size:18px">A ${p.analyser[0]}% · B ${p.analyser[1]}% · C ${p.analyser[2]}%</div>
+      <div class="small">Tank level ${p.level}%${p.faults?` · <span style="color:var(--amber)">physical faults injected (Fault Injection page)</span>`:""}</div>
+    </div>
+  </div>`;
+}
+$("#plant").addEventListener("click", e=>{
+  const b = e.target.closest("[data-act]"); if(!b) return;
+  action(b.dataset.act, b.dataset.svc);
+});
+
+/* ---------- workspace ---------- */
+// Every system gets one live iframe, kept loaded once opened. Moving an iframe in the page
+// would reload it (and log you out), so they all live in one layer and are positioned over
+// whichever pane shows them.
+const ICONS = {missions:"🎯", guide:"📘", simulation:"🏭", plc:"🎛", ews:"🛠", hmi:"🖥", kali:"🐉", caldera:"🔥", wazuh:"🛡"};
+// "native" views are parts of this page shown in a pane, not iframes
+const VIEWS = [{id:"missions", name:"Missions", native:true}, {id:"guide", name:"Guide", url:"/guide"},
+  ...SYSTEMS.filter(s=>s.url).map(s=>({id:s.svc, name:s.name.split(" · ")[0], url:s.view||s.url, ext:s.url, cred:s.cred, ip:s.ip}))];
+const viewById = id => VIEWS.find(v=>v.id===id) || VIEWS[0];
+let ws = {split:true, panes:["guide","kali"], active:1};
+try{ Object.assign(ws, JSON.parse(localStorage.getItem("ws")||"{}")); }catch{}
+if(!VIEWS.some(v=>v.id===ws.panes[0])) ws.panes[0]="guide";
+if(!VIEWS.some(v=>v.id===ws.panes[1]) || ws.panes[1]===ws.panes[0]) ws.panes[1] = ws.panes[0]==="kali" ? "guide" : "kali";
+const saveWs = ()=>{ try{ localStorage.setItem("ws", JSON.stringify(ws)); }catch{} };
+const frames = {};
+let lastPlant = null;
+
+const visible = ()=> ws.split ? [0,1] : [ws.active];
+function frame(id, hash){
+  const v = viewById(id);
+  if(v.native) return null;
+  let f = frames[id];
+  if(!f){
+    f = document.createElement("iframe");
+    f.src = v.url + (hash ? "#"+hash : "");
+    f.className = id==="guide" ? "guide" : id==="simulation" ? "dark" : "";
+    f.allow = "fullscreen; clipboard-read; clipboard-write";
+    frames[id] = f; $("#layer").appendChild(f);
+  } else if(hash){
+    try{ f.contentWindow.location.hash = hash; }catch{ f.src = v.url + "#" + hash; }
+  }
+  return f;
+}
+function renderPanes(){
+  $("#missionsHome").appendChild($("#missionsBox"));
+  $("#panes").className = "panes" + (ws.split ? " split" : "");
+  $("#panes").innerHTML = visible().map(i=>{ const v = viewById(ws.panes[i]);
+    return `<div class="pane ${ws.split && ws.active===i?"active":""}" data-pane="${i}">
+      <div class="pbar">
+        <span class="pname">${ICONS[v.id]||""} ${esc(v.name)}</span>
+        ${v.id==="missions"?`<span class="small" id="paneXp"></span>`:""}
+        ${v.cred?`<span class="cred" data-copy="${esc(v.cred.split(" / ")[1])}" title="Click to copy password">🔑 ${esc(v.cred)}</span>`:""}
+        <span class="sp"></span>
+        ${ws.split?`<button data-swap title="Swap left and right">⇄</button><button data-max="${i}" title="Show only this one">□</button>`
+                  :`<button data-unmax title="Back to side by side">◫</button>`}
+        ${v.native?"":`<button data-reload="${v.id}" title="Reload">⟳</button>
+        <button data-pop="${v.id}" title="Open in a new tab">↗</button>`}
+      </div>
+      <div class="slot ${v.native?"native":""}" data-slot="${i}">${v.native?"":"Loading…"}</div>
+    </div>`; }).join("");
+  $("#wsSingle").classList.toggle("on", !ws.split);
+  $("#wsSplit").classList.toggle("on", ws.split);
+  layout(); renderDock();
+}
+function layout(){
+  const stage = $("#stage").getBoundingClientRect();
+  const shown = {};
+  visible().forEach(i=>{ shown[ws.panes[i]] = $(`[data-slot="${i}"]`); });
+  Object.keys(shown).forEach(id=>frame(id));
+  const mslot = shown.missions;
+  if(mslot && mslot.firstChild!==$("#missionsBox")) mslot.appendChild($("#missionsBox"));
+  if(!mslot && $("#missionsBox").parentNode.id!=="missionsHome") $("#missionsHome").appendChild($("#missionsBox"));
+  $("#missionsAway").hidden = !mslot;
+  Object.entries(frames).forEach(([id,f])=>{
+    const slot = shown[id];
+    if(!slot){ f.style.display = "none"; return; }
+    const r = slot.getBoundingClientRect();
+    Object.assign(f.style, {display:"block", left:(r.left-stage.left)+"px", top:(r.top-stage.top)+"px", width:r.width+"px", height:r.height+"px"});
+  });
+}
+new ResizeObserver(layout).observe($("#stage"));
+window.addEventListener("resize", layout);
+
+function renderDock(){
+  const p = lastPlant;
+  const sub = id=>{
+    const c = status.containers[id];
+    if(id==="missions"){
+      const n = MISSIONS.findIndex((_,i)=>!missionDone(i));
+      if(n<0) return [`All done · ${totalXP()} XP`];
+      const m = MISSIONS[n], got = m.obj.filter((_,j)=>progress.obj[`${n}.${j}`]).length + m.flags.filter((_,j)=>progress.flags[`${n}.${j}`]).length;
+      const px = $("#paneXp"); if(px) px.textContent = `${RANKS[renderRank()][1]} · ${totalXP()} XP`;
+      return [`M${n+1} ${got}/${m.obj.length+m.flags.length} · ${totalXP()} XP`];
+    }
+    if(id==="guide"){ const n = MISSIONS.findIndex((_,i)=>!missionDone(i)); return [n<0?"All missions done":`Up next: Mission ${n+1}`]; }
+    if(!status.vm) return ["offline", true];
+    if(!c || c.state!=="running") return ["down", true];
+    if(c.health==="starting") return ["starting…"];
+    if(id==="simulation" && p && p.ok) return [p.e_stop ? "E-STOP TRIPPED" : `${p.pressure} kPa`, p.e_stop || p.pressure>=3000];
+    if(id==="plc" && p) return [p.plc_running ? "Running" : "STOPPED", !p.plc_running];
+    return [viewById(id).ip || "running"];
+  };
+  $("#dock").innerHTML = VIEWS.map(v=>{
+    const where = visible().filter(i=>ws.panes[i]===v.id)[0];
+    const shown = where!==undefined, [txt,bad] = sub(v.id);
+    const c = status.containers[v.id], down = !v.native && v.id!=="guide" && (!status.vm || !c || c.state!=="running");
+    return `<button class="tile2 ${shown?"shown":""} ${shown && ws.split && where===ws.active?"act":""} ${frames[v.id]?"live":""}" data-tile="${v.id}" ${down?"disabled":""}
+        title="Click: show in the highlighted pane">
+      ${shown && ws.split?`<span class="tag">${where===0?"L":"R"}</span>`:""}
+      <span class="tt"><span class="ic">${ICONS[v.id]||"▫"}</span>${esc(v.name)}</span>
+      <span class="sub ${bad?"bad":""}">${esc(txt)}</span>
+      ${ws.split?`<span class="lr"><span data-to="0">◧ left</span><span data-to="1">◨ right</span></span>`:""}
+    </button>`; }).join("");
+}
+
+// Put a system in pane i. If it's already in the other pane, the two swap.
+function show(i, id, hash){
+  if(!ws.split) i = ws.active;
+  const other = 1-i;
+  if(ws.split && ws.panes[other]===id) ws.panes[other] = ws.panes[i];
+  ws.panes[i] = id; ws.active = i; saveWs();
+  frame(id, hash); renderPanes();
+}
+function setActive(i){
+  if(!ws.split || ws.active===i) return;
+  ws.active = i; saveWs();
+  document.querySelectorAll(".pane").forEach(p=>p.classList.toggle("active", +p.dataset.pane===i));
+  renderDock();
+}
+$("#dock").addEventListener("click", e=>{
+  const t = e.target.closest("[data-tile]"); if(!t || t.disabled) return;
+  const to = e.target.closest("[data-to]");
+  show(to ? +to.dataset.to : ws.active, t.dataset.tile);
+});
+$("#panes").addEventListener("click", e=>{
+  const pane = e.target.closest(".pane"); if(pane) setActive(+pane.dataset.pane);
+  const t = e.target;
+  if(t.dataset.copy){ navigator.clipboard.writeText(t.dataset.copy); toast("Password copied"); }
+  else if(t.dataset.swap!==undefined){ ws.panes.reverse(); ws.active = 1-ws.active; saveWs(); renderPanes(); }
+  else if(t.dataset.max){ ws.split=false; ws.active=+t.dataset.max; saveWs(); renderPanes(); }
+  else if(t.dataset.unmax!==undefined){ ws.split=true; saveWs(); renderPanes(); }
+  else if(t.dataset.reload){ const f = frames[t.dataset.reload]; if(f) f.src = f.src; }
+  else if(t.dataset.pop){ const v = viewById(t.dataset.pop); window.open(v.ext || v.url, "_blank", "noopener"); }
+});
+// Clicks inside an iframe never reach this page, so watch which frame takes focus
+window.addEventListener("blur", ()=>setTimeout(()=>{
+  const a = document.activeElement; if(!a || a.tagName!=="IFRAME") return;
+  const id = Object.keys(frames).find(k=>frames[k]===a);
+  const i = visible().find(i=>ws.panes[i]===id);
+  if(i!==undefined) setActive(i);
+}));
+document.addEventListener("click", e=>{
+  const g = e.target.closest("[data-guide]");
+  if(g){ e.preventDefault();
+    const gi = visible().find(i=>ws.panes[i]==="guide");
+    const mi = visible().find(i=>ws.panes[i]==="missions");
+    // Guide already showing: use it. Missions showing: put the guide beside them.
+    let i = gi!==undefined ? gi : mi!==undefined ? 1-mi : ws.active;
+    if(gi===undefined && mi!==undefined && !ws.split) ws.split = true;
+    show(i, "guide", g.dataset.guide);
+    if(!$("#workspace").classList.contains("big")) $("#workspace").scrollIntoView({behavior:"smooth"}); return; }
+  if(e.target.closest("[data-tile-home]")){ const mi = visible().find(i=>ws.panes[i]==="missions");
+    if(mi!==undefined) show(mi, "guide"); return; }
+  const b = e.target.closest("[data-show]");
+  if(b && !b.disabled && !b.closest("#dock")){ show(ws.active, b.dataset.show);
+    if(!$("#workspace").classList.contains("big")) $("#workspace").scrollIntoView({behavior:"smooth"}); }
+});
+$("#wsSingle").onclick = ()=>{ ws.split=false; saveWs(); renderPanes(); };
+$("#wsSplit").onclick = ()=>{ ws.split=true; saveWs(); renderPanes(); };
+function setBig(on){
+  $("#workspace").classList.toggle("big", on); document.body.classList.toggle("big", on);
+  $("#wsBig").textContent = on ? "⤡ Exit" : "⤢ Expand";
+  requestAnimationFrame(layout);
+}
+$("#wsBig").onclick = ()=>setBig(!$("#workspace").classList.contains("big"));
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") setBig(false); });
+
+// Load every system in the background once the lab is up, so switching is instant.
+// When the lab comes back up after being down, reload them once it has settled.
+let wasUp = null, preloaded = false;
+const sysSeen = {};
+// "Up 3 seconds (healthy)" -> 3, "Up 2 minutes" -> 120, "Up About an hour" -> 3600
+function upSecs(t){
+  if(!t) return 0;
+  const m = t.match(/Up (About an?|Less than a|\d+) (second|minute|hour|day|week)/); if(!m) return 0;
+  const n = /^\d+$/.test(m[1]) ? +m[1] : m[1].startsWith("Less") ? 0 : 1;
+  return n * {second:1, minute:60, hour:3600, day:86400, week:604800}[m[2]];
+}
+function labCameUp(){
+  if(status.vm && !preloaded){
+    preloaded = true;
+    // Not the 3D plant: it's heavy, and its 3D engine can't start properly while hidden
+    VIEWS.filter(v=>v.id!=="guide" && v.id!=="simulation" && !v.native).forEach((v,k)=>setTimeout(()=>{
+      const c = status.containers[v.id];
+      if(c && c.state==="running" && c.health!=="starting"){ frame(v.id); layout(); renderDock(); }
+    }, 1500*(k+1)));
+  }
+  // A system that restarts (Restart button, reset, power cycle) leaves its panel showing a
+  // dead page. Reload the panel a few seconds after that system is healthy again.
+  Object.entries(frames).forEach(([id,f])=>{
+    const c = status.containers[id];
+    const ready = !!(c && c.state==="running" && c.health!=="starting" && c.health!=="unhealthy");
+    const started = c && c.status;  // e.g. "Up 2 minutes", changes to "Up 3 seconds" on restart
+    const prev = sysSeen[id];
+    if(prev && ready && (!prev.ready || upSecs(started) < upSecs(prev.started))) setTimeout(()=>{ f.src = f.src; }, 5000);
+    sysSeen[id] = {ready, started};
+  });
+  if(wasUp===false && status.vm) setTimeout(()=>Object.entries(frames).forEach(([id,f])=>{ if(id!=="guide") f.src=f.src; }), 60000);
+  wasUp = status.vm;
+}
+renderPanes();
+
+/* ---------- reset missions ---------- */
+let armedM = false;
+$("#btnResetMissions").onclick = ()=>{
+  const b = $("#btnResetMissions");
+  if(!armedM){ armedM=true; b.classList.add("armed"); b.textContent="Click again to wipe progress";
+    setTimeout(()=>{ armedM=false; b.classList.remove("armed"); b.textContent="Reset missions"; },4000); return; }
+  armedM=false; b.classList.remove("armed"); b.textContent="Reset missions";
+  progress = {obj:{}, flags:{}, unlocked:{}, socRevealed:false}; shownRank = null; save(); renderAlerts();
+  toast("Missions reset. Back to Trainee.");
+};
+
+/* ---------- console + alerts ---------- */
+function renderJob(){
+  const j = status.job || {};
+  if(!j.name){ return; }
+  $("#jobName").textContent = "▶ lab.sh " + j.name;
+  $("#jobState").innerHTML = j.running ? `<span style="color:var(--amber)">running…</span>`
+    : j.ok ? `<span style="color:var(--green)">done</span>` : `<span style="color:var(--red)">failed</span>`;
+  const con = $("#console"); con.textContent = (j.log||[]).join("\n") || "…"; con.scrollTop = con.scrollHeight;
+  if(!j.running && j.finished && j.finished!==lastJobFinished){
+    if(lastJobFinished) toast(j.ok ? `${j.name}: complete` : `${j.name}: failed, see console`);
+    lastJobFinished = j.finished;
+  }
+}
+async function renderAlerts(){
+  const box = $("#alerts");
+  if(!progress.socRevealed && !unlocked(5)){
+    box.innerHTML = `<div class="spoiler">Live alerts contain spoilers for Mission 6 (the hunt).
+      <button id="reveal">Reveal SOC feed anyway</button></div>`;
+    $("#reveal").onclick = ()=>{ progress.socRevealed=true; save(); renderAlerts(); };
+    return;
+  }
+  if(!status.vm || !status.containers.wazuh){ box.innerHTML = `<p class="offline">SIEM offline</p>`; return; }
+  const list = await api("/api/alerts").catch(()=>[]);
+  box.innerHTML = list.length ? `<div class="alerts">` + list.map(a=>{
+      const c = a.level>=10?"h":a.level>=6?"m":"l";
+      return `<div class="alert"><span class="lvl ${c}">${a.level}</span><span>${esc(a.desc)}<br><span class="small">${esc(a.ts)} · ${esc(a.agent)}</span></span></div>`;
+    }).join("") + `</div>` : `<p class="small">No network alerts yet.</p>`;
+}
+
+/* ---------- loop ---------- */
+async function poll(){
+  try{ status = await api("/api/status"); }catch{ status = {vm:false,containers:{},job:{}}; $("#vmText").textContent="Command Centre server not reachable"; }
+  renderSystems(); renderJob(); labCameUp(); renderDock();
+}
+(async ()=>{
+  try{ progress = Object.assign(progress, await api("/api/progress")); }catch{}
+  renderMissions(); shownRank = renderRank(); renderMedals();
+  await poll(); renderAlerts(); renderPlant();
+  setInterval(poll, 3000);
+  setInterval(renderPlant, 3000);
+  setInterval(renderAlerts, 15000);
+})();
+</script>
+</body>
+</html>

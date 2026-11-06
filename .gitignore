@@ -1,0 +1,10 @@
+# GRFICSv3 is downloaded by ./lab.sh setup, not part of this repo
+GRFICSv3/
+
+# Your own progress and logs
+command-centre/progress.json
+command-centre/progress.prev.json
+command-centre/server.log
+command-centre/server.pid
+__pycache__/
+.DS_Store
